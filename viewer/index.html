@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flexcil Viewer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Шапка -->
+        <header id="header">
+            <div class="header-left">
+                <button id="sidebar-toggle" class="icon-btn" title="Панель навигации">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12h18M3 6h18M3 18h18"/>
+                    </svg>
+                </button>
+                <h1>Flexcil Viewer</h1>
+            </div>
+            <div class="header-center">
+                <button id="open-backup-btn" class="primary-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    Открыть папку бэкапа
+                </button>
+                <button id="open-file-btn" class="secondary-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    Открыть .flx файл
+                </button>
+            </div>
+            <div class="header-right">
+                <span id="doc-title"></span>
+            </div>
+        </header>
+
+        <!-- Основное содержимое -->
+        <div id="main-container">
+            <!-- Боковая панель -->
+            <aside id="sidebar" class="open">
+                <div class="sidebar-tabs">
+                    <button class="tab-btn active" data-tab="files">Файлы</button>
+                    <button class="tab-btn" data-tab="pages">Страницы</button>
+                    <button class="tab-btn" data-tab="audio">Аудио</button>
+                </div>
+                
+                <div class="sidebar-content">
+                    <!-- Вкладка файлов -->
+                    <div id="files-tab" class="tab-content active">
+                        <div id="file-tree" class="file-tree">
+                            <div class="empty-state">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                                </svg>
+                                <p>Откройте папку бэкапа Flexcil</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Вкладка страниц -->
+                    <div id="pages-tab" class="tab-content">
+                        <div id="page-list" class="page-list">
+                            <div class="empty-state">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                    <line x1="9" y1="3" x2="9" y2="21"/>
+                                </svg>
+                                <p>Выберите документ</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Вкладка аудио -->
+                    <div id="audio-tab" class="tab-content">
+                        <div id="audio-list" class="audio-list">
+                            <div class="empty-state">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+                                </svg>
+                                <p>Нет аудиозаписей</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Область просмотра -->
+            <main id="viewer">
+                <!-- Панель инструментов -->
+                <div id="viewer-toolbar">
+                    <div class="toolbar-left">
+                        <button id="prev-page" class="icon-btn" title="Предыдущая страница" disabled>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="15 18 9 12 15 6"/>
+                            </svg>
+                        </button>
+                        <span id="page-indicator">— / —</span>
+                        <button id="next-page" class="icon-btn" title="Следующая страница" disabled>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 18 15 12 9 6"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="toolbar-center">
+                        <button id="zoom-out" class="icon-btn" title="Уменьшить" disabled>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                                <line x1="8" y1="11" x2="14" y2="11"/>
+                            </svg>
+                        </button>
+                        <span id="zoom-level">100%</span>
+                        <button id="zoom-in" class="icon-btn" title="Увеличить" disabled>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                                <line x1="11" y1="8" x2="11" y2="14"/>
+                                <line x1="8" y1="11" x2="14" y2="11"/>
+                            </svg>
+                        </button>
+                        <button id="zoom-fit" class="icon-btn" title="По размеру окна" disabled>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="toolbar-right">
+                        <button id="toggle-view-mode" class="icon-btn" title="Режим просмотра" disabled>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                <line x1="3" y1="9" x2="21" y2="9"/>
+                                <line x1="3" y1="15" x2="21" y2="15"/>
+                            </svg>
+                        </button>
+                        <label class="toggle-label">
+                            <input type="checkbox" id="show-pdf" checked>
+                            <span>PDF</span>
+                        </label>
+                        <label class="toggle-label">
+                            <input type="checkbox" id="show-drawings" checked>
+                            <span>Рисунки</span>
+                        </label>
+                        <label class="toggle-label">
+                            <input type="checkbox" id="show-images" checked>
+                            <span>Изображения</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Область отображения страницы -->
+                <div id="page-container">
+                    <!-- Single page mode -->
+                    <div id="page-wrapper">
+                        <canvas id="pdf-canvas"></canvas>
+                        <canvas id="drawings-canvas"></canvas>
+                        <canvas id="images-canvas"></canvas>
+                    </div>
+                    
+                    <!-- Continuous scroll mode -->
+                    <div id="pages-continuous" class="hidden"></div>
+                    
+                    <!-- Приветственный экран -->
+                    <div id="welcome-screen">
+                        <div class="welcome-content">
+                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                <polyline points="10 9 9 9 8 9"/>
+                            </svg>
+                            <h2>Flexcil Viewer</h2>
+                            <p>Просмотр заметок и аннотаций из приложения Flexcil</p>
+                            <div class="welcome-actions">
+                                <button id="welcome-open-backup" class="primary-btn large">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                                    </svg>
+                                    Открыть папку бэкапа
+                                </button>
+                                <button id="welcome-open-file" class="secondary-btn large">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                        <polyline points="14 2 14 8 20 8"/>
+                                    </svg>
+                                    Открыть .flx файл
+                                </button>
+                            </div>
+                            <p class="hint">
+                                Поддерживаются файлы .flx и папки бэкапа Flexcil
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Аудио плеер -->
+                <div id="audio-player" class="hidden">
+                    <div class="audio-info">
+                        <span id="audio-title">—</span>
+                        <span id="audio-time">0:00 / 0:00</span>
+                    </div>
+                    <div class="audio-controls">
+                        <button id="audio-prev" class="icon-btn" title="Назад 10 сек">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="11 19 2 12 11 5 11 19"/>
+                                <polygon points="22 19 13 12 22 5 22 19"/>
+                            </svg>
+                        </button>
+                        <button id="audio-play" class="icon-btn large" title="Воспроизвести">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <polygon points="5 3 19 12 5 21 5 3"/>
+                            </svg>
+                        </button>
+                        <button id="audio-next" class="icon-btn" title="Вперёд 10 сек">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="13 19 22 12 13 5 13 19"/>
+                                <polygon points="2 19 11 12 2 5 2 19"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="audio-progress">
+                        <input type="range" id="audio-seek" min="0" max="100" value="0">
+                    </div>
+                    <div class="audio-sync">
+                        <label class="toggle-label">
+                            <input type="checkbox" id="audio-sync-drawings" checked>
+                            <span>Синхронизация с рисунками</span>
+                        </label>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Модальное окно загрузки -->
+    <div id="loading-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="spinner"></div>
+            <p id="loading-text">Загрузка...</p>
+        </div>
+    </div>
+
+    <!-- Модальное окно ошибки -->
+    <div id="error-modal" class="modal hidden">
+        <div class="modal-content error">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <h3>Ошибка</h3>
+            <p id="error-text"></p>
+            <button id="error-close" class="primary-btn">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Скрипты -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    <script src="wasm_exec.js"></script>
+    <script src="flx-parser.js"></script>
+    <script src="renderer.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
