@@ -110,6 +110,7 @@ class FlexcilViewer {
         document.getElementById('audio-prev').addEventListener('click', () => this.audioSeek(-10));
         document.getElementById('audio-next').addEventListener('click', () => this.audioSeek(10));
         document.getElementById('audio-seek').addEventListener('input', (e) => this.audioSeekTo(e.target.value));
+        document.getElementById('audio-speed').addEventListener('change', (e) => this.changeAudioSpeed(e.target.value));
         document.getElementById('audio-sync-drawings').addEventListener('change', (e) => {
             this.audioSyncEnabled = e.target.checked;
             if (!this.audioSyncEnabled) {
@@ -1462,6 +1463,11 @@ class FlexcilViewer {
             this.renderer.renderDrawings(this.currentPageData.drawings);
             this.renderer.renderImages(this.currentPageData.images, this.parser);
         }
+    }
+
+    changeAudioSpeed(speed) {
+        if (!this.audioElement) return;
+        this.audioElement.playbackRate = parseFloat(speed);
     }
 }
 

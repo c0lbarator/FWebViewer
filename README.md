@@ -102,6 +102,8 @@ cd wasm
 GOOS=js GOARCH=wasm go build -o ../viewer/flexcil.wasm points_decoder.go
 ```
 
+## Благодарности
+[Flexcil Backup Viewer](https://github.com/janptn/flexcil-backup-viewer) - код для распознавания форм/фигур
 ## Лицензия
 
 MIT

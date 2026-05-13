@@ -122,6 +122,90 @@ class FlexcilRenderer {
     }
 
     /**
+     * Рендеринг фигур (shapes)
+     * @param {Array} shapes - Массив фигур с декодированными точками
+     */
+    renderShapes(shapes) {
+        if (!this.showDrawings || !shapes || !shapes.length) {
+            return;
+        }
+
+        const ctx = this.drawingsCtx;
+        const scale = this.scale * this.zoom;
+
+        for (const shape of shapes) {
+            const points = shape.points;
+            if (!points || points.length < 2) continue;
+
+            ctx.save();
+            
+            // Настройка стиля
+            ctx.strokeStyle = shape.strokeColor;
+            ctx.lineWidth = shape.lineWidth * scale;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // Обработка типа линии (dashtype)
+            if (shape.dashType === 1) {
+                ctx.setLineDash([5 * scale, 5 * scale]);
+            } else if (shape.dashType === 2) {
+                ctx.setLineDash([2 * scale, 2 * scale]);
+            }
+            
+            // Применение поворота если нужен
+            if (shape.rotate && shape.rotate !== 0) {
+                // Вычисляем центр для поворота
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                for (const pt of points) {
+                    minX = Math.min(minX, pt.x);
+                    minY = Math.min(minY, pt.y);
+                    maxX = Math.max(maxX, pt.x);
+                    maxY = Math.max(maxY, pt.y);
+                }
+                const centerX = (minX + maxX) / 2 * this.baseWidth * scale;
+                const centerY = (minY + maxY) / 2 * this.baseHeight * scale;
+                
+                ctx.translate(centerX, centerY);
+                ctx.rotate(shape.rotate);
+                ctx.translate(-centerX, -centerY);
+            }
+            
+            // Заливка для замкнутых фигур
+            if (shape.fillColor && shape.isClosed) {
+                ctx.fillStyle = shape.fillColor;
+            }
+
+            // Отрисовка пути
+            ctx.beginPath();
+            
+            const firstPoint = points[0];
+            const firstX = firstPoint.x * this.baseWidth * scale;
+            const firstY = firstPoint.y * this.baseHeight * scale;
+            ctx.moveTo(firstX, firstY);
+
+            for (let i = 1; i < points.length; i++) {
+                const pt = points[i];
+                const px = pt.x * this.baseWidth * scale;
+                const py = pt.y * this.baseHeight * scale;
+                ctx.lineTo(px, py);
+            }
+
+            // Закрытие пути если фигура замкнута
+            if (shape.isClosed) {
+                ctx.closePath();
+            }
+
+            // Заливка или обводка
+            if (shape.fillColor && shape.isClosed) {
+                ctx.fill();
+            }
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+    }
+
+    /**
      * Рендеринг рисунков
      * @param {Array} drawings - Массив рисунков с декодированными точками
      */
@@ -309,7 +393,7 @@ class FlexcilRenderer {
     /**
      * Полный рендеринг страницы
      * @param {Object} pageInfo - Информация о странице из pages.index
-     * @param {Object} pageData - Данные страницы (drawings, images)
+     * @param {Object} pageData - Данные страницы (drawings, images, shapes)
      * @param {FlxParser} parser - Парсер
      */
     async renderPage(pageInfo, pageData, parser) {
@@ -323,7 +407,7 @@ class FlexcilRenderer {
             this.baseHeight = pageInfo.frame.height;
         }
         
-        // Вычисляем максимальные координаты из рисунков и изображений
+        // Вычисляем максимальные координаты из рисунков, изображений и фигур
         let maxY = 1.0;
         let maxX = 1.0;
         
@@ -351,6 +435,18 @@ class FlexcilRenderer {
                     console.log('Image frame:', img.frame, '-> maxX:', imgMaxX, 'maxY:', imgMaxY);
                     maxX = Math.max(maxX, imgMaxX);
                     maxY = Math.max(maxY, imgMaxY);
+                }
+            }
+        }
+        
+        // Проверяем фигуры (shapes)
+        if (pageData.shapes && pageData.shapes.length > 0) {
+            console.log('Checking shapes for bounds:', pageData.shapes);
+            for (const shape of pageData.shapes) {
+                const points = shape.points || [];
+                for (const pt of points) {
+                    maxX = Math.max(maxX, pt.x);
+                    maxY = Math.max(maxY, pt.y);
                 }
             }
         }
@@ -391,6 +487,10 @@ class FlexcilRenderer {
         // Рендерим рисунки
         console.log('Rendering drawings:', pageData.drawings?.length || 0);
         this.renderDrawings(pageData.drawings);
+        
+        // Рендерим фигуры
+        console.log('Rendering shapes:', pageData.shapes?.length || 0);
+        this.renderShapes(pageData.shapes);
         
         console.log('Renderer.renderPage complete');
     }

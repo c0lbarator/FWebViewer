@@ -154,7 +154,7 @@ class FlxParser {
     /**
      * Получение данных страницы
      * @param {string} pageKey - Ключ страницы
-     * @returns {Promise<Object>} - Данные страницы с рисунками и изображениями
+     * @returns {Promise<Object>} - Данные страницы с рисунками, изображениями и фигурами
      */
     async getPageData(pageKey) {
         // Кэширование
@@ -165,19 +165,24 @@ class FlxParser {
         const basePath = `objects/${pageKey}`;
         
         // Загружаем все файлы страницы параллельно
-        const [drawings, images, objects] = await Promise.all([
+        const [drawings, images, objects, shapes] = await Promise.all([
             this.parseJson(`${basePath}.drawings`),
             this.parseJson(`${basePath}.images`),
-            this.parseJson(`${basePath}.objects`)
+            this.parseJson(`${basePath}.objects`),
+            this.parseJson(`${basePath}.shapes`)
         ]);
 
         // Декодируем точки рисунков
         const decodedDrawings = drawings ? await this.decodeDrawings(drawings) : [];
         
+        // Декодируем фигуры
+        const decodedShapes = shapes ? await this.decodeShapes(shapes) : [];
+        
         const pageData = {
             drawings: decodedDrawings,
             images: images || [],
             objects: objects || [],
+            shapes: decodedShapes,
             pageKey
         };
 
@@ -283,6 +288,151 @@ class FlxParser {
             console.error('Points decode error:', e);
             return { points: [], count: 0 };
         }
+    }
+
+    /**
+     * Декодирование фигур (shapes)
+     * @param {Array} shapes - Массив фигур
+     * @returns {Promise<Array>}
+     */
+    async decodeShapes(shapes) {
+        if (!shapes || !Array.isArray(shapes)) return [];
+
+        const result = [];
+        
+        for (const shape of shapes) {
+            const points = this.decodeShapePoints(shape.points, shape.start);
+            
+            result.push({
+                key: shape.key,
+                shapeType: shape.shapeType,
+                points: points.points,
+                controlPoints: shape.controlPoints || [],
+                widthNorm: points.widthNorm,
+                strokeColor: this.argbToRgba(shape.strokeColor),
+                fillColor: shape.fillColor ? this.argbToRgba(shape.fillColor) : null,
+                dashType: shape.dashtype || 0,
+                lineWidth: this.computeShapeLineWidth(shape.scale),
+                rotate: shape.rotate || 0,
+                isClosed: shape.shapeType === 9 // Type 9 - замкнутая стрелка
+            });
+        }
+        
+        return result;
+    }
+
+    /**
+     * Декодирование точек фигуры
+     * @param {string} base64 - Base64 строка с точками
+     * @param {Object} start - Стартовая позиция {x, y}
+     * @returns {Object} - {points: [], widthNorm?: number}
+     */
+    decodeShapePoints(base64, start) {
+        if (!base64 || base64.trim().length === 0) {
+            return { points: [{ x: start?.x || 0, y: start?.y || 0 }] };
+        }
+
+        try {
+            const bytes = this.base64ToBytes(base64);
+            if (bytes.byteLength < 16) {
+                return { points: [{ x: start?.x || 0, y: start?.y || 0 }] };
+            }
+
+            const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+            const expectedCount = view.getUint32(0, true);
+
+            // Формат: uint32 count, далее triplets: float32(dx), float32(dy), float32(extra)
+            const tripletPayloadBytes = bytes.byteLength - 4;
+            if (tripletPayloadBytes >= 12 && tripletPayloadBytes % 12 === 0) {
+                const tripletCount = tripletPayloadBytes / 12;
+                if (expectedCount === 0 || expectedCount === tripletCount) {
+                    const points = [];
+                    const widths = [];
+                    const startX = start?.x || 0;
+                    const startY = start?.y || 0;
+                    
+                    for (let offset = 4; offset + 12 <= bytes.byteLength; offset += 12) {
+                        const dx = view.getFloat32(offset, true);
+                        const dy = view.getFloat32(offset + 4, true);
+                        const extra = view.getFloat32(offset + 8, true);
+                        points.push({ x: startX + dx, y: startY + dy });
+                        if (Number.isFinite(extra) && extra > 0) {
+                            widths.push(extra);
+                        }
+                    }
+                    if (points.length > 0) {
+                        const widthNorm = widths.length > 0 ? widths.reduce((a, b) => a + b, 0) / widths.length : undefined;
+                        return { points, widthNorm };
+                    }
+                }
+            }
+
+            // Fallback для старого формата: pairs of float32(dx, dy)
+            if ((bytes.byteLength - 4) % 8 === 0) {
+                const points = [];
+                const startX = start?.x || 0;
+                const startY = start?.y || 0;
+                
+                for (let offset = 4; offset + 8 <= bytes.byteLength; offset += 8) {
+                    const dx = view.getFloat32(offset, true);
+                    const dy = view.getFloat32(offset + 4, true);
+                    points.push({ x: startX + dx, y: startY + dy });
+                }
+                if (points.length > 0) {
+                    return { points };
+                }
+            }
+
+            return { points: [{ x: start?.x || 0, y: start?.y || 0 }] };
+        } catch (e) {
+            console.error('Shape points decode error:', e);
+            return { points: [{ x: start?.x || 0, y: start?.y || 0 }] };
+        }
+    }
+
+    /**
+     * Конвертирование Base64 в Uint8Array
+     * @param {string} value - Base64 строка
+     * @returns {Uint8Array}
+     */
+    base64ToBytes(value) {
+        const binary = atob(value);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes;
+    }
+
+    /**
+     * Конвертирование ARGB цвета в rgba CSS строку
+     * @param {number} argb - Цвет в формате ARGB
+     * @returns {string} - rgba(r, g, b, a)
+     */
+    argbToRgba(argb) {
+        if (!Number.isFinite(argb)) return 'rgba(0, 0, 0, 1)';
+        
+        const a = ((argb >>> 24) & 0xFF) / 255;
+        const r = (argb >>> 16) & 0xFF;
+        const g = (argb >>> 8) & 0xFF;
+        const b = argb & 0xFF;
+        
+        return `rgba(${r}, ${g}, ${b}, ${a})`;
+    }
+
+    /**
+     * Вычисление толщины линии фигуры на основе scale
+     * @param {Object} scale - Scale объект {x?, y?}
+     * @returns {number}
+     */
+    computeShapeLineWidth(scale) {
+        const xScale = typeof scale?.x === 'number' ? scale.x : 1;
+        const yScale = typeof scale?.y === 'number' ? scale.y : xScale;
+        const average = (xScale + yScale) / 2;
+        if (!Number.isFinite(average)) {
+            return 2;
+        }
+        return Math.max(0.8, Math.min(12, 2 * average));
     }
 
     /**
